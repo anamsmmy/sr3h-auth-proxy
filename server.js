@@ -8,6 +8,10 @@ const morgan = require('morgan');
 
 const app = express();
 
+// ✅ مهم جداً على Railway / أي Proxy
+// يسمح لـ express-rate-limit بالتعامل الصحيح مع X-Forwarded-For
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 app.use(morgan('combined'));
@@ -103,7 +107,7 @@ app.post('/verify', authLimiter, async (req, res) => {
     console.log(`✅ تحقق ناجح لـ ${email} من IP: ${req.ip}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في التحقق:', error.message);
+    console.error('❌ خطأ في التحقق:', error.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: 'خطأ من خادم التحقق'
@@ -142,7 +146,7 @@ app.post('/verify-periodic', authLimiter, async (req, res) => {
     console.log(`✔ تحقق دوري لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في التحقق الدوري:', error.message);
+    console.error('❌ خطأ في التحقق الدوري:', error.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: 'فشل التحقق الدوري'
@@ -180,7 +184,7 @@ app.post('/activate', authLimiter, async (req, res) => {
     console.log(`🔑 تفعيل جديد لـ ${email} على جهاز: ${hardware_id}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في التفعيل:', error.message);
+    console.error('❌ خطأ في التفعيل:', error.response?.data || error.message);
     res.status(500).json({
       success: false,
       message: 'فشل التفعيل'
