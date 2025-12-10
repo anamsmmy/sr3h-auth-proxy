@@ -228,10 +228,13 @@ app.post('/validate-code', authLimiter, async (req, res) => {
     console.log(`✅ تحقق من الكود: ${code} لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في التحقق من الكود:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+    console.error('❌ خطأ في التحقق من الكود - Response:', errorMsg, 'Error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || 'خطأ في التحقق من الكود'
+      message: error.response?.data?.message || errorMsg || 'خطأ في التحقق من الكود',
+      debug: errorMsg
     });
   }
 });
@@ -267,10 +270,13 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
     console.log(`✅ استرجاع الكود: ${code} لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في استرجاع الكود:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+    console.error('❌ خطأ في استرجاع الكود - Response:', errorMsg, 'Error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || 'خطأ في استرجاع الكود'
+      message: error.response?.data?.message || errorMsg || 'خطأ في استرجاع الكود',
+      debug: errorMsg
     });
   }
 });
@@ -304,10 +310,13 @@ app.post('/generate-otp', authLimiter, async (req, res) => {
     console.log(`✅ توليد OTP لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في توليد OTP:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+    console.error('❌ خطأ في توليد OTP - Response:', errorMsg, 'Error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || 'خطأ في توليد OTP'
+      message: error.response?.data?.message || errorMsg || 'خطأ في توليد OTP',
+      debug: errorMsg
     });
   }
 });
@@ -343,10 +352,13 @@ app.post('/verify-otp', authLimiter, async (req, res) => {
     console.log(`✅ تحقق من OTP لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في التحقق من OTP:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+    console.error('❌ خطأ في التحقق من OTP - Response:', errorMsg, 'Error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || 'خطأ في التحقق من OTP'
+      message: error.response?.data?.message || errorMsg || 'خطأ في التحقق من OTP',
+      debug: errorMsg
     });
   }
 });
@@ -381,10 +393,13 @@ app.post('/initiate-device-transfer', authLimiter, async (req, res) => {
     console.log(`✅ بدء نقل الجهاز لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في بدء نقل الجهاز:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+    console.error('❌ خطأ في بدء نقل الجهاز - Response:', errorMsg, 'Error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || 'خطأ في بدء نقل الجهاز'
+      message: error.response?.data?.message || errorMsg || 'خطأ في بدء نقل الجهاز',
+      debug: errorMsg
     });
   }
 });
@@ -420,10 +435,13 @@ app.post('/complete-device-transfer', authLimiter, async (req, res) => {
     console.log(`✅ إكمال نقل الجهاز لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    console.error('❌ خطأ في إكمال نقل الجهاز:', error.response?.data || error.message);
+    const errorData = error.response?.data;
+    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
+    console.error('❌ خطأ في إكمال نقل الجهاز - Response:', errorMsg, 'Error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || 'خطأ في إكمال نقل الجهاز'
+      message: error.response?.data?.message || errorMsg || 'خطأ في إكمال نقل الجهاز',
+      debug: errorMsg
     });
   }
 });
