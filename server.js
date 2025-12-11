@@ -34,13 +34,19 @@ const limiter = rateLimit({
   legacyHeaders: false
 });
 
-// Rate Limiting مشدد – 5 طلبات / 15 دقيقة
+// Rate Limiting مشدد – 20 طلبات / 15 دقيقة
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 20,
   message: 'عدد طلبات التحقق كبير، جرب لاحقاً',
-  skipSuccessfulRequests: true,
-  standardHeaders: true,
+  skip: (req, res) => false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      message: 'عدد طلبات التحقق كبير، جرب لاحقاً'
+    });
+  },
+  standardHeaders: false,
   legacyHeaders: false
 });
 
@@ -173,10 +179,10 @@ app.post('/activate', authLimiter, async (req, res) => {
     }
 
     const response = await axios.post(
-      `${SUPABASE_URL}/rest/v1/rpc/authenticate_user`,
+      `${SUPABASE_URL}/rest/v1/rpc/activate_subscription`,
       {
-        user_email: email,
-        user_hardware_id: hardware_id
+        p_email: email,
+        p_hardware_id: hardware_id
       },
       {
         headers: {
@@ -213,8 +219,7 @@ app.post('/validate-code', authLimiter, async (req, res) => {
     const response = await axios.post(
       `${SUPABASE_URL}/rest/v1/rpc/validate_subscription_code`,
       {
-        p_code: code,
-        p_email: email
+        p_code: code
       },
       {
         headers: {
@@ -228,13 +233,10 @@ app.post('/validate-code', authLimiter, async (req, res) => {
     console.log(`✅ تحقق من الكود: ${code} لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    const errorData = error.response?.data;
-    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
-    console.error('❌ خطأ في التحقق من الكود - Response:', errorMsg, 'Error:', error.message);
+    console.error('❌ Validation error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || errorMsg || 'خطأ في التحقق من الكود',
-      debug: errorMsg
+      message: 'خطأ في التحقق من الكود'
     });
   }
 });
@@ -270,13 +272,10 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
     console.log(`✅ استرجاع الكود: ${code} لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    const errorData = error.response?.data;
-    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
-    console.error('❌ خطأ في استرجاع الكود - Response:', errorMsg, 'Error:', error.message);
+    console.error('❌ Redeem error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || errorMsg || 'خطأ في استرجاع الكود',
-      debug: errorMsg
+      message: 'خطأ في استرجاع الكود'
     });
   }
 });
@@ -310,13 +309,10 @@ app.post('/generate-otp', authLimiter, async (req, res) => {
     console.log(`✅ توليد OTP لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    const errorData = error.response?.data;
-    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
-    console.error('❌ خطأ في توليد OTP - Response:', errorMsg, 'Error:', error.message);
+    console.error('❌ OTP generation error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || errorMsg || 'خطأ في توليد OTP',
-      debug: errorMsg
+      message: 'خطأ في توليد OTP'
     });
   }
 });
@@ -352,19 +348,16 @@ app.post('/verify-otp', authLimiter, async (req, res) => {
     console.log(`✅ تحقق من OTP لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    const errorData = error.response?.data;
-    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
-    console.error('❌ خطأ في التحقق من OTP - Response:', errorMsg, 'Error:', error.message);
+    console.error('❌ OTP verification error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || errorMsg || 'خطأ في التحقق من OTP',
-      debug: errorMsg
+      message: 'خطأ في التحقق من OTP'
     });
   }
 });
 
 // POST /initiate-device-transfer - بدء عملية نقل الجهاز
-app.post('/initiate-device-transfer', authLimiter, async (req, res) => {
+app.post('/initiate-device-transfer', async (req, res) => {
   try {
     const { email, current_hardware_id } = req.body;
 
@@ -386,26 +379,23 @@ app.post('/initiate-device-transfer', authLimiter, async (req, res) => {
           Authorization: `Bearer ${SUPABASE_KEY}`,
           apikey: SUPABASE_KEY,
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 10000
       }
     );
 
-    console.log(`✅ بدء نقل الجهاز لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    const errorData = error.response?.data;
-    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
-    console.error('❌ خطأ في بدء نقل الجهاز - Response:', errorMsg, 'Error:', error.message);
+    console.error('❌ Device transfer initiation error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || errorMsg || 'خطأ في بدء نقل الجهاز',
-      debug: errorMsg
+      message: 'خطأ في بدء نقل الجهاز'
     });
   }
 });
 
 // POST /complete-device-transfer - إكمال عملية نقل الجهاز
-app.post('/complete-device-transfer', authLimiter, async (req, res) => {
+app.post('/complete-device-transfer', async (req, res) => {
   try {
     const { email, new_hardware_id, transfer_token } = req.body;
 
@@ -435,13 +425,45 @@ app.post('/complete-device-transfer', authLimiter, async (req, res) => {
     console.log(`✅ إكمال نقل الجهاز لـ ${email}`);
     res.json(response.data);
   } catch (error) {
-    const errorData = error.response?.data;
-    const errorMsg = typeof errorData === 'string' ? errorData : JSON.stringify(errorData);
-    console.error('❌ خطأ في إكمال نقل الجهاز - Response:', errorMsg, 'Error:', error.message);
+    console.error('❌ Device transfer completion error:', error.message);
     res.status(error.response?.status || 500).json({
       success: false,
-      message: error.response?.data?.message || errorMsg || 'خطأ في إكمال نقل الجهاز',
-      debug: errorMsg
+      message: 'خطأ في إكمال نقل الجهاز'
+    });
+  }
+});
+
+// Generic proxy for /rest/* endpoints (Supabase REST API passthrough)
+app.all('/rest/*', async (req, res) => {
+  try {
+    const path = req.path;
+    const method = req.method;
+    const query = req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : '';
+    const fullUrl = `${SUPABASE_URL}${path}${query}`;
+    
+    const config = {
+      method: method.toLowerCase(),
+      url: fullUrl,
+      headers: {
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        apikey: SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      },
+      validateStatus: () => true
+    };
+
+    if (['POST', 'PATCH', 'PUT'].includes(method)) {
+      config.data = req.body;
+    }
+
+    console.log(`📡 Proxying ${method} ${path}`);
+    const response = await axios(config);
+    res.status(response.status).json(response.data);
+  } catch (error) {
+    console.error('❌ Proxy error:', error.message);
+    res.status(500).json({
+      success: false,
+      message: 'Proxy error: ' + error.message
     });
   }
 });
@@ -465,7 +487,6 @@ app.use((err, req, res, next) => {
 
 // Start Server
 const PORT = process.env.PORT || 3000;
-
 
 app.listen(PORT, () => {
   console.log(`🚀 SR3H Authentication Proxy يعمل على PORT: ${PORT}`);
