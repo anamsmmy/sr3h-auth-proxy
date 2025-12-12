@@ -497,8 +497,7 @@ app.post('/bind-code', authLimiter, async (req, res) => {
 
     const updateData = {
       email: email,
-      hardware_id: hardware_id,
-      status: 'bound'
+      hardware_id: hardware_id
     };
 
     const response = await axios.patch(
