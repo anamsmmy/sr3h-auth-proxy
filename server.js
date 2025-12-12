@@ -497,8 +497,7 @@ app.post('/bind-code', authLimiter, async (req, res) => {
 
     const updateData = {
       email: email,
-      hardware_id: hardware_id,
-      status: 'bound'
+      hardware_id: hardware_id
     };
 
     const response = await axios.patch(
@@ -539,7 +538,25 @@ app.post('/mark-code-used', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.patch(
+    const checkResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${code}&select=code`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!checkResponse.data || checkResponse.data.length === 0) {
+      console.warn(`⚠️ الكود غير موجود: ${code}`);
+      return res.status(404).json({
+        success: false,
+        message: 'الكود غير موجود'
+      });
+    }
+
+    const updateResponse = await axios.patch(
       `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${code}`,
       {
         status: 'used',
