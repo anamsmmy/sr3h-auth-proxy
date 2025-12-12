@@ -433,6 +433,185 @@ app.post('/complete-device-transfer', async (req, res) => {
   }
 });
 
+// POST /check-code - التحقق من حالة الكود (جديد: يرجع status, email, hardware_id)
+app.post('/check-code', authLimiter, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code'
+      });
+    }
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${code}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const codeRecord = response.data[0];
+      console.log(`✅ تحقق من الكود: ${code}`);
+      return res.json({
+        success: true,
+        message: 'الكود موجود',
+        subscription_type: codeRecord.subscription_type,
+        status: codeRecord.status,
+        email: codeRecord.email,
+        hardware_id: codeRecord.hardware_id,
+        expiry_date: codeRecord.expiry_date
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: 'الكود غير موجود'
+    });
+  } catch (error) {
+    console.error('❌ Check code error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في التحقق من الكود'
+    });
+  }
+});
+
+// POST /bind-code - ربط الكود مع البريد والجهاز
+app.post('/bind-code', authLimiter, async (req, res) => {
+  try {
+    const { code, email, hardware_id } = req.body;
+
+    if (!code || !email || !hardware_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو email أو hardware_id'
+      });
+    }
+
+    const updateData = {
+      email: email,
+      hardware_id: hardware_id,
+      status: 'bound'
+    };
+
+    const response = await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${code}`,
+      updateData,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ ربط الكود: ${code} مع ${email}`);
+    res.json({
+      success: true,
+      message: 'تم ربط الكود بنجاح'
+    });
+  } catch (error) {
+    console.error('❌ Bind code error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في ربط الكود'
+    });
+  }
+});
+
+// POST /mark-code-used - تحديث حالة الكود إلى 'used'
+app.post('/mark-code-used', authLimiter, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code'
+      });
+    }
+
+    const response = await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${code}`,
+      {
+        status: 'used',
+        used_date: new Date().toISOString()
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ تحديد الكود كمستخدم: ${code}`);
+    res.json({
+      success: true,
+      message: 'تم تحديث حالة الكود'
+    });
+  } catch (error) {
+    console.error('❌ Mark code used error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في تحديث حالة الكود'
+    });
+  }
+});
+
+// POST /update-device-transfer - تحديث بيانات نقل الجهاز
+app.post('/update-device-transfer', authLimiter, async (req, res) => {
+  try {
+    const { code, new_hardware_id } = req.body;
+
+    if (!code || !new_hardware_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو new_hardware_id'
+      });
+    }
+
+    const updateData = {
+      hardware_id: new_hardware_id,
+      device_transfer_count: 'device_transfer_count + 1',
+      last_device_transfer_date: new Date().toISOString()
+    };
+
+    const response = await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${code}`,
+      updateData,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ تحديث نقل الجهاز: ${code}`);
+    res.json({
+      success: true,
+      message: 'تم تحديث بيانات نقل الجهاز'
+    });
+  } catch (error) {
+    console.error('❌ Update device transfer error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في تحديث بيانات نقل الجهاز'
+    });
+  }
+});
+
 // Generic proxy for /rest/* endpoints (Supabase REST API passthrough)
 app.all('/rest/*', async (req, res) => {
   try {
