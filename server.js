@@ -100,24 +100,33 @@ app.post('/verify', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.post(
-      `${SUPABASE_URL}/rest/v1/rpc/verify_authentication`,
-      {
-        user_email: email,
-        user_hardware_id: hardware_id,
-        verification_ip: req.ip
-      },
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&hardware_id=eq.${encodeURIComponent(hardware_id)}&select=*`,
       {
         headers: {
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY,
-          'Content-Type': 'application/json'
+          apikey: SUPABASE_KEY
         }
       }
     );
 
-    console.log(`✅ تحقق ناجح لـ ${email} من IP: ${req.ip}`);
-    res.json(response.data);
+    if (response.data && response.data.length > 0) {
+      const subscription = response.data[0];
+      console.log(`✅ تحقق ناجح لـ ${email} من IP: ${req.ip}`);
+      return res.json({
+        success: true,
+        subscription_type: subscription.subscription_type,
+        status: subscription.status,
+        expiry_date: subscription.expiry_date,
+        activated_date: subscription.activated_date,
+        trial_days: subscription.trial_days
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: 'لم يتم العثور على اشتراك نشط'
+    });
   } catch (error) {
     console.error('❌ خطأ في التحقق:', error.response?.data || error.message);
     res.status(500).json({
@@ -139,24 +148,31 @@ app.post('/verify-periodic', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.post(
-      `${SUPABASE_URL}/rest/v1/rpc/verify_authentication`,
-      {
-        user_email: email,
-        user_hardware_id: hardware_id,
-        verification_ip: req.ip
-      },
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&hardware_id=eq.${encodeURIComponent(hardware_id)}&select=*`,
       {
         headers: {
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY,
-          'Content-Type': 'application/json'
+          apikey: SUPABASE_KEY
         }
       }
     );
 
-    console.log(`✔ تحقق دوري لـ ${email}`);
-    res.json(response.data);
+    if (response.data && response.data.length > 0) {
+      const subscription = response.data[0];
+      console.log(`✔ تحقق دوري لـ ${email}`);
+      return res.json({
+        success: true,
+        subscription_type: subscription.subscription_type,
+        status: subscription.status,
+        expiry_date: subscription.expiry_date
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: 'لم يتم العثور على اشتراك'
+    });
   } catch (error) {
     console.error('❌ خطأ في التحقق الدوري:', error.response?.data || error.message);
     res.status(500).json({
@@ -178,23 +194,58 @@ app.post('/activate', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.post(
-      `${SUPABASE_URL}/rest/v1/rpc/activate_subscription`,
-      {
-        p_email: email,
-        p_hardware_id: hardware_id
-      },
+    const checkResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&select=id`,
       {
         headers: {
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY,
-          'Content-Type': 'application/json'
+          apikey: SUPABASE_KEY
         }
       }
     );
 
+    if (checkResponse.data && checkResponse.data.length > 0) {
+      await axios.patch(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
+        {
+          hardware_id: hardware_id,
+          activated_date: new Date().toISOString(),
+          status: 'active'
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    } else {
+      await axios.post(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions`,
+        {
+          email: email,
+          hardware_id: hardware_id,
+          activated_date: new Date().toISOString(),
+          status: 'active',
+          subscription_type: 'trial',
+          trial_days: 0
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
     console.log(`🔑 تفعيل جديد لـ ${email} على جهاز: ${hardware_id}`);
-    res.json(response.data);
+    res.json({
+      success: true,
+      message: 'تم التفعيل بنجاح'
+    });
   } catch (error) {
     console.error('❌ خطأ في التفعيل:', error.response?.data || error.message);
     res.status(500).json({
@@ -216,22 +267,46 @@ app.post('/validate-code', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.post(
-      `${SUPABASE_URL}/rest/v1/rpc/validate_subscription_code`,
-      {
-        p_code: code
-      },
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}&select=*`,
       {
         headers: {
           Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY,
-          'Content-Type': 'application/json'
+          apikey: SUPABASE_KEY
         }
       }
     );
 
-    console.log(`✅ تحقق من الكود: ${code} لـ ${email}`);
-    res.json(response.data);
+    if (response.data && response.data.length > 0) {
+      const codeRecord = response.data[0];
+      
+      if (codeRecord.status === 'used') {
+        return res.status(400).json({
+          success: false,
+          message: 'الكود مستخدم بالفعل'
+        });
+      }
+
+      if (codeRecord.expiry_date && new Date(codeRecord.expiry_date) < new Date()) {
+        return res.status(400).json({
+          success: false,
+          message: 'الكود منتهي الصلاحية'
+        });
+      }
+
+      console.log(`✅ تحقق من الكود: ${code} لـ ${email}`);
+      return res.json({
+        success: true,
+        message: 'الكود صحيح',
+        subscription_type: codeRecord.subscription_type,
+        duration_days: codeRecord.duration_days
+      });
+    }
+
+    return res.status(404).json({
+      success: false,
+      message: 'الكود غير موجود'
+    });
   } catch (error) {
     console.error('❌ Validation error:', error.message);
     res.status(error.response?.status || 500).json({
@@ -253,12 +328,49 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.post(
-      `${SUPABASE_URL}/rest/v1/rpc/redeem_subscription_code`,
+    const checkResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}&select=*`,
       {
-        p_code: code,
-        p_email: email,
-        p_hardware_id: hardware_id
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!checkResponse.data || checkResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'الكود غير موجود'
+      });
+    }
+
+    const codeRecord = checkResponse.data[0];
+
+    if (codeRecord.status === 'used') {
+      return res.status(400).json({
+        success: false,
+        message: 'الكود مستخدم بالفعل'
+      });
+    }
+
+    if (codeRecord.expiry_date && new Date(codeRecord.expiry_date) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'الكود منتهي الصلاحية'
+      });
+    }
+
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (codeRecord.duration_days || 0));
+
+    await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}`,
+      {
+        status: 'used',
+        email: email,
+        hardware_id: hardware_id,
+        used_date: new Date().toISOString()
       },
       {
         headers: {
@@ -269,8 +381,63 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
       }
     );
 
+    const checkSubResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&select=id`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (checkSubResponse.data && checkSubResponse.data.length > 0) {
+      await axios.patch(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
+        {
+          subscription_type: codeRecord.subscription_type,
+          hardware_id: hardware_id,
+          expiry_date: expiryDate.toISOString(),
+          status: 'active',
+          activated_date: new Date().toISOString()
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    } else {
+      await axios.post(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions`,
+        {
+          email: email,
+          hardware_id: hardware_id,
+          subscription_type: codeRecord.subscription_type,
+          status: 'active',
+          expiry_date: expiryDate.toISOString(),
+          activated_date: new Date().toISOString(),
+          trial_days: 0
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
     console.log(`✅ استرجاع الكود: ${code} لـ ${email}`);
-    res.json(response.data);
+    res.json({
+      success: true,
+      message: 'تم استرجاع الكود بنجاح',
+      subscription_type: codeRecord.subscription_type,
+      expiry_date: expiryDate.toISOString()
+    });
   } catch (error) {
     console.error('❌ Redeem error:', error.message);
     res.status(error.response?.status || 500).json({
