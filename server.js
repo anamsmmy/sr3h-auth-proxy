@@ -364,6 +364,23 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
     const expiryDate = new Date();
     expiryDate.setDate(expiryDate.getDate() + (codeRecord.duration_days || 0));
 
+    await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}`,
+      {
+        status: 'used',
+        email: email,
+        hardware_id: hardware_id,
+        used_date: new Date().toISOString()
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
     const checkSubResponse = await axios.get(
       `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&select=id,subscription_code`,
       {
@@ -375,11 +392,25 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
     );
 
     if (checkSubResponse.data && checkSubResponse.data.length > 0) {
+      const subId = checkSubResponse.data[0].id;
+      await axios.patch(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?id=eq.${subId}`,
+        { subscription_code: null },
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
       await axios.patch(
         `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
         {
           subscription_type: codeRecord.subscription_type,
           hardware_id: hardware_id,
+          subscription_code: code,
           expiry_date: expiryDate.toISOString(),
           status: 'active',
           activated_date: new Date().toISOString()
@@ -414,23 +445,6 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
         }
       );
     }
-
-    await axios.patch(
-      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}`,
-      {
-        status: 'used',
-        email: email,
-        hardware_id: hardware_id,
-        used_date: new Date().toISOString()
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY,
-          'Content-Type': 'application/json'
-        }
-      }
-    );
 
     console.log(`✅ استرجاع الكود: ${code} لـ ${email}`);
     res.json({
