@@ -375,28 +375,11 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
     );
 
     if (checkSubResponse.data && checkSubResponse.data.length > 0) {
-      const oldSub = checkSubResponse.data[0];
-      
-      if (oldSub.subscription_code) {
-        await axios.patch(
-          `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?id=eq.${oldSub.id}`,
-          { subscription_code: null },
-          {
-            headers: {
-              Authorization: `Bearer ${SUPABASE_KEY}`,
-              apikey: SUPABASE_KEY,
-              'Content-Type': 'application/json'
-            }
-          }
-        );
-      }
-
       await axios.patch(
         `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
         {
           subscription_type: codeRecord.subscription_type,
           hardware_id: hardware_id,
-          subscription_code: code,
           expiry_date: expiryDate.toISOString(),
           status: 'active',
           activated_date: new Date().toISOString()
