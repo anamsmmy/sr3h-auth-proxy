@@ -563,7 +563,8 @@ app.post('/save-otp', authLimiter, async (req, res) => {
         headers: {
           Authorization: `Bearer ${SUPABASE_KEY}`,
           apikey: SUPABASE_KEY,
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
         }
       }
     );
@@ -571,14 +572,14 @@ app.post('/save-otp', authLimiter, async (req, res) => {
     console.log(`✅ تم حفظ OTP لـ ${email} على الجهاز ${hardware_id}`);
     res.json({
       success: true,
-      message: 'تم حفظ رمز OTP بنجاح',
-      data: response.data
+      message: 'تم حفظ رمز OTP بنجاح'
     });
   } catch (error) {
-    console.error('❌ خطأ في حفظ OTP:', error.message);
+    console.error('❌ خطأ في حفظ OTP:', error.response?.data || error.message);
+    const errorMsg = error.response?.data?.message || error.message || 'خطأ غير معروف';
     res.status(error.response?.status || 500).json({
       success: false,
-      message: 'فشل حفظ رمز OTP: ' + (error.response?.data?.message || error.message)
+      message: 'فشل حفظ رمز OTP: ' + errorMsg
     });
   }
 });

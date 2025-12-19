@@ -1,10 +1,1 @@
-Add 6 new advanced subscription management endpoints
-
-- /validate-code: Validate subscription code without redeeming
-- /redeem-code: Redeem/use a subscription code  
-- /generate-otp: Generate OTP for email verification
-- /verify-otp: Verify OTP code
-- /initiate-device-transfer: Start device transfer process
-- /complete-device-transfer: Complete device transfer
-
-All endpoints use Supabase RPC functions and follow existing patterns.
+\"Add save-otp endpoint with hardware_id support\"  
