@@ -82,6 +82,7 @@ app.get('/', (req, res) => {
       '/redeem-code': 'POST - استهلاك كود الاشتراك',
       '/generate-otp': 'POST - توليد رمز البريد',
       '/verify-otp': 'POST - التحقق من رمز البريد',
+      '/save-otp': 'POST - حفظ رمز OTP مع معرف الجهاز',
       '/initiate-device-transfer': 'POST - بدء نقل الجهاز',
       '/complete-device-transfer': 'POST - إكمال نقل الجهاز'
     }
@@ -538,6 +539,50 @@ app.post('/verify-otp', authLimiter, async (req, res) => {
   }
 });
 
+// POST /save-otp - حفظ رمز OTP مع معرف الجهاز والصلاحية
+app.post('/save-otp', authLimiter, async (req, res) => {
+  try {
+    const { email, otp_code, hardware_id, expires_at } = req.body;
+
+    if (!email || !otp_code || !hardware_id || !expires_at) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقودة معاملات مطلوبة: email, otp_code, hardware_id, expires_at'
+      });
+    }
+
+    const response = await axios.post(
+      `${SUPABASE_URL}/rest/v1/macro_fort_verification_codes`,
+      {
+        email,
+        otp_code,
+        hardware_id,
+        expires_at
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ تم حفظ OTP لـ ${email} على الجهاز ${hardware_id}`);
+    res.json({
+      success: true,
+      message: 'تم حفظ رمز OTP بنجاح',
+      data: response.data
+    });
+  } catch (error) {
+    console.error('❌ خطأ في حفظ OTP:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'فشل حفظ رمز OTP: ' + (error.response?.data?.message || error.message)
+    });
+  }
+});
+
 // POST /initiate-device-transfer - بدء عملية نقل الجهاز
 app.post('/initiate-device-transfer', async (req, res) => {
   try {
@@ -842,6 +887,343 @@ app.all('/rest/*', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Proxy error: ' + error.message
+    });
+  }
+});
+
+// POST /sync-code-status - تحديث حالة الكود بناءً على الشروط
+app.post('/sync-code-status', authLimiter, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code'
+      });
+    }
+
+    const checkResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!checkResponse.data || checkResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'الكود غير موجود'
+      });
+    }
+
+    const codeRecord = checkResponse.data[0];
+    let newStatus = 'unused';
+
+    if (codeRecord.used_date) {
+      newStatus = 'used';
+    } else if (codeRecord.expiry_date && new Date(codeRecord.expiry_date) < new Date()) {
+      newStatus = 'expired';
+    }
+
+    const updateResponse = await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}`,
+      {
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ تحديث حالة الكود: ${code} → ${newStatus}`);
+    res.json({
+      success: true,
+      message: 'تم تحديث حالة الكود بنجاح',
+      code: code,
+      status: newStatus,
+      old_status: codeRecord.status
+    });
+  } catch (error) {
+    console.error('❌ خطأ في تحديث حالة الكود:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في تحديث حالة الكود'
+    });
+  }
+});
+
+// POST /verify-code-for-transfer - التحقق من الكود قبل نقل الجهاز
+app.post('/verify-code-for-transfer', authLimiter, async (req, res) => {
+  try {
+    const { code, email } = req.body;
+
+    if (!code || !email) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو email'
+      });
+    }
+
+    const codeResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!codeResponse.data || codeResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'الكود غير موجود',
+        code: 'CODE_NOT_FOUND'
+      });
+    }
+
+    const codeRecord = codeResponse.data[0];
+
+    if (codeRecord.status === 'used') {
+      return res.status(400).json({
+        success: false,
+        message: 'الكود مستخدم بالفعل',
+        code: 'CODE_ALREADY_USED'
+      });
+    }
+
+    if (codeRecord.expiry_date && new Date(codeRecord.expiry_date) < new Date()) {
+      return res.status(400).json({
+        success: false,
+        message: 'الكود منتهي الصلاحية',
+        code: 'CODE_EXPIRED'
+      });
+    }
+
+    if (codeRecord.email !== email.toLowerCase().trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'البريد الإلكتروني لا يتطابق مع البريد المرتبط بالكود',
+        code: 'EMAIL_MISMATCH'
+      });
+    }
+
+    const subscriptionResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&select=device_transfer_count,last_device_transfer_date`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    let transfersRemaining = 3;
+    let canTransfer = true;
+    let transferLimitReason = '';
+
+    if (subscriptionResponse.data && subscriptionResponse.data.length > 0) {
+      const subscription = subscriptionResponse.data[0];
+      const transferCount = subscription.device_transfer_count || 0;
+      const lastTransferDate = subscription.last_device_transfer_date ? new Date(subscription.last_device_transfer_date) : null;
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      if (lastTransferDate && lastTransferDate > thirtyDaysAgo) {
+        if (transferCount >= 3) {
+          canTransfer = false;
+          transferLimitReason = `تم تجاوز حد النقلات (3/3) خلال آخر 30 يوم`;
+        } else {
+          transfersRemaining = 3 - transferCount;
+        }
+      } else {
+        transfersRemaining = 3;
+      }
+    }
+
+    console.log(`✅ التحقق من الكود للنقل: ${code} لـ ${email} - متبقي: ${transfersRemaining} نقلات`);
+    res.json({
+      success: true,
+      message: 'الكود صحيح وجاهز للنقل',
+      code: code,
+      email: email,
+      subscription_type: codeRecord.subscription_type,
+      current_hardware_id: codeRecord.hardware_id,
+      can_transfer: canTransfer,
+      transfers_remaining: transfersRemaining,
+      transfer_limit_reason: transferLimitReason
+    });
+  } catch (error) {
+    console.error('❌ خطأ في التحقق من الكود للنقل:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في التحقق من الكود'
+    });
+  }
+});
+
+// POST /complete-device-transfer - إكمال نقل الجهاز وتحديث hardware_id
+app.post('/complete-device-transfer', authLimiter, async (req, res) => {
+  try {
+    const { code, email, new_hardware_id, old_hardware_id } = req.body;
+
+    if (!code || !email || !new_hardware_id || !old_hardware_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو email أو new_hardware_id أو old_hardware_id'
+      });
+    }
+
+    const codeResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!codeResponse.data || codeResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'الكود غير موجود'
+      });
+    }
+
+    const codeRecord = codeResponse.data[0];
+
+    if (codeRecord.hardware_id !== old_hardware_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'معرف الجهاز القديم لا يتطابق مع معرف الجهاز المرتبط بالكود'
+      });
+    }
+
+    if (codeRecord.email !== email.toLowerCase().trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'البريد الإلكتروني لا يتطابق'
+      });
+    }
+
+    const subscriptionResponse = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&hardware_id=eq.${encodeURIComponent(old_hardware_id)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (!subscriptionResponse.data || subscriptionResponse.data.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'لم يتم العثور على الاشتراك'
+      });
+    }
+
+    const subscription = subscriptionResponse.data[0];
+    const transferCount = (subscription.device_transfer_count || 0) + 1;
+    const now = new Date();
+
+    if (transferCount > 3) {
+      const lastTransferDate = subscription.last_device_transfer_date ? new Date(subscription.last_device_transfer_date) : null;
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      
+      if (!lastTransferDate || lastTransferDate <= thirtyDaysAgo) {
+        await axios.patch(
+          `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
+          {
+            device_transfer_count: 1,
+            last_device_transfer_date: now.toISOString()
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              apikey: SUPABASE_KEY,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'تم تجاوز حد النقلات (3/3) خلال آخر 30 يوم'
+        });
+      }
+    } else {
+      await axios.patch(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
+        {
+          device_transfer_count: transferCount,
+          last_device_transfer_date: now.toISOString()
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+
+    await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&hardware_id=eq.${encodeURIComponent(old_hardware_id)}`,
+      {
+        hardware_id: new_hardware_id
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    await axios.patch(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}`,
+      {
+        hardware_id: new_hardware_id,
+        email: email,
+        updated_at: now.toISOString()
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ نقل الجهاز: ${code} من ${old_hardware_id} إلى ${new_hardware_id} لـ ${email}`);
+    res.json({
+      success: true,
+      message: 'تم نقل الاشتراك إلى الجهاز الجديد بنجاح',
+      code: code,
+      email: email,
+      old_hardware_id: old_hardware_id,
+      new_hardware_id: new_hardware_id,
+      transfers_used: transferCount
+    });
+  } catch (error) {
+    console.error('❌ خطأ في نقل الجهاز:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في نقل الجهاز'
     });
   }
 });
