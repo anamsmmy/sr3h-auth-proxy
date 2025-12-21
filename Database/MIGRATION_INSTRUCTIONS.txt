@@ -1,0 +1,97 @@
+==============================================================================
+SUPABASE MIGRATION INSTRUCTIONS - Advanced Subscription System
+==============================================================================
+
+This file contains the steps needed to apply the advanced subscription system 
+migrations to your Supabase database.
+
+==============================================================================
+STEP 1: Backup Your Database
+==============================================================================
+
+Before applying any migrations, create a backup of your database:
+1. Log in to https://app.supabase.com
+2. Navigate to your project
+3. Go to Database > Backups
+4. Click "Create a backup now"
+5. Wait for the backup to complete
+
+==============================================================================
+STEP 2: Apply SQL Migrations via Supabase SQL Editor
+==============================================================================
+
+1. Log in to https://app.supabase.com
+2. Navigate to your project
+3. Go to SQL Editor > New Query
+4. Copy the entire contents of supabase_migrations_advanced.sql
+5. Paste into the SQL editor
+6. Review the changes (focus on):
+   - Updated verify_authentication() function
+   - Updated authenticate_user() function
+   - New validate_subscription_code() function
+   - New redeem_subscription_code() function
+   - New generate_otp() function
+   - New verify_otp() function
+   - New initiate_device_transfer() function
+   - New complete_device_transfer() function
+7. Click "Run" to execute all migrations
+8. Wait for success confirmation
+
+==============================================================================
+STEP 3: Verify Function Permissions
+==============================================================================
+
+After running the migration, verify that all functions have proper permissions:
+1. Go to Database > Functions
+2. Check each function exists:
+   - verify_authentication
+   - authenticate_user
+   - validate_subscription_code
+   - redeem_subscription_code
+   - generate_otp
+   - verify_otp
+   - initiate_device_transfer
+   - complete_device_transfer
+3. Verify each function shows execution permissions for service_role
+
+==============================================================================
+STEP 4: Test Functions via SQL Console
+==============================================================================
+
+Test each function with sample data:
+
+-- Test verify_authentication
+SELECT verify_authentication('test@example.com', 'hw-id-123');
+
+-- Test validate_subscription_code
+SELECT validate_subscription_code('TESTCODE123', 'test@example.com');
+
+-- Test generate_otp
+SELECT generate_otp('test@example.com');
+
+-- Test initiate_device_transfer
+SELECT initiate_device_transfer('test@example.com', 'hw-id-old');
+
+==============================================================================
+STEP 5: Deployment Notes
+==============================================================================
+
+✓ All functions use macro_fort_subscriptions table (not macro_subscriptions)
+✓ All functions check against macro_fort_subscription_codes for code validation
+✓ OTP and transfer tokens stored in macro_fort_verification_codes
+✓ All timestamps use UTC timezone
+✓ Functions include proper error handling and return JSONB responses
+
+==============================================================================
+STEP 6: Next Steps
+==============================================================================
+
+After successfully applying migrations:
+1. Update Railway proxy server with new endpoints
+2. Deploy updated C# code with new services
+3. Test full flow from application
+
+For issues or questions:
+- Check Supabase error logs in Dashboard > Logs
+- Verify table structure hasn't changed unexpectedly
+- Ensure all three tables exist with correct schema

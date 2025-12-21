@@ -1,0 +1,79 @@
+# Security - Never commit these files
+*.bin
+*.key
+*.pem
+*.crt
+.env
+.env.local
+.env.*.local
+env.json
+credentials.json
+
+# Application Settings - May contain secrets
+appsettings.local.json
+appsettings.production.json
+appsettings.*.json
+web.config
+app.config
+
+# Railway/Supabase - Never commit actual configs
+railway.json
+supabase.json
+
+# IDE and Editor
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+.DS_Store
+.idea/
+
+# Build and Compilation
+bin/
+obj/
+*.dll
+*.exe
+*.pdb
+*.nupkg
+.nuget/
+
+# Testing
+[Tt]est[Rr]esult*/
+*.trx
+*.coverage
+
+# Visual Studio
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.sln.docstates
+
+# Node modules (for railway-proxy)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# System files
+Thumbs.db
+
+# Project-specific
+SR3H_MACRO_Setup.exe
+pbm.pbm
+*.pbm
+
+# GitHub Actions instructions
+.github/instructions/
+
+# Generated files from compilation
+*.g.cs

@@ -1,0 +1,192 @@
+<Window x:Class="MacroApp.Views.VerificationCodeWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="التحقق من البريد الإلكتروني" 
+        Width="600" 
+        Height="600"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Icon="../icon.ico"
+        FlowDirection="RightToLeft">
+
+    <Window.Resources>
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1976D2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#0D47A1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Padding" Value="10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="Black"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="5">
+                            <ScrollViewer x:Name="PART_ContentHost" 
+                                        Padding="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter Property="BorderBrush" Value="#2196F3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+            <TextBlock Text="📧 التحقق من البريد الإلكتروني" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       HorizontalAlignment="Center"
+                       Foreground="#2196F3"
+                       Margin="0,0,0,10"/>
+            <TextBlock x:Name="EmailDisplayTextBlock"
+                       Text="تم إرسال كود التحقق إلى:" 
+                       FontSize="14" 
+                       HorizontalAlignment="Center"
+                       Foreground="#666666"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Info Box -->
+        <Border Grid.Row="2" 
+                Background="#E3F2FD" 
+                BorderBrush="#2196F3" 
+                BorderThickness="1" 
+                CornerRadius="8" 
+                Padding="15">
+            <StackPanel>
+                <TextBlock Text="ℹ️ معلومات مهمة:" 
+                           FontSize="14" 
+                           FontWeight="Bold" 
+                           Foreground="#1976D2"
+                           Margin="0,0,0,8"/>
+                <TextBlock Text="• كود التحقق مكون من 6 أرقام" 
+                           FontSize="13" 
+                           Foreground="#333333"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="• الكود صالح لمدة 10 دقائق فقط" 
+                           FontSize="13" 
+                           Foreground="#333333"
+                           Margin="0,0,0,4"/>
+                <TextBlock Text="• تحقق من صندوق البريد الوارد أو الرسائل غير المرغوب فيها" 
+                           FontSize="13" 
+                           Foreground="#333333"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Verification Code Input -->
+        <StackPanel Grid.Row="4">
+            <TextBlock Text="🔢 كود التحقق:" 
+                       FontSize="16" 
+                       FontWeight="Bold" 
+                       Margin="0,0,0,10"/>
+            <TextBox x:Name="VerificationCodeTextBox" 
+                     Style="{StaticResource ModernTextBox}"
+                     Height="60"
+                     FontSize="32"
+                     FontFamily="Consolas"
+                     FontWeight="Bold"
+                     TextAlignment="Center"
+                     MaxLength="6"
+                     VerticalContentAlignment="Center"
+                     PreviewTextInput="VerificationCodeTextBox_PreviewTextInput"/>
+        </StackPanel>
+
+        <!-- Status Message -->
+        <TextBlock x:Name="StatusTextBlock" 
+                   Grid.Row="6"
+                   Text=""
+                   FontSize="13"
+                   HorizontalAlignment="Center"
+                   TextWrapping="Wrap"
+                   TextAlignment="Center"/>
+
+        <!-- Progress Bar -->
+        <ProgressBar x:Name="ProgressBar" 
+                     Grid.Row="8"
+                     Height="6"
+                     IsIndeterminate="False"
+                     Visibility="Collapsed"
+                     Background="#E0E0E0"
+                     Foreground="#2196F3"/>
+
+        <!-- Buttons -->
+        <Grid Grid.Row="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Button x:Name="VerifyButton" 
+                    Grid.Column="0"
+                    Content="✅ تحقق"
+                    Style="{StaticResource ModernButton}"
+                    Height="50"
+                    FontSize="16"
+                    Click="VerifyButton_Click"/>
+
+            <Button x:Name="ResendButton" 
+                    Grid.Column="2"
+                    Content="🔄 إعادة إرسال"
+                    Style="{StaticResource ModernButton}"
+                    Background="#FF9800"
+                    Height="50"
+                    FontSize="16"
+                    Click="ResendButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>

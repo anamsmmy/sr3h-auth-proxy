@@ -1,0 +1,21 @@
+﻿Prerequisites Information - SR3H MACRO
+=====================================
+
+Required Files:
+
+1. .NET 6.0 Desktop Runtime (x64)
+   - File: windowsdesktop-runtime-6.0.25-win-x64.exe
+   - Size: ~55 MB
+   - Description: Required to run the application
+   - Installation: Automatic during SR3H MACRO setup
+
+Installation Notes:
+- .NET Runtime will be installed automatically if not present
+- All files are safe and from official Microsoft sources
+
+System Requirements:
+- Windows 10 version 1809 or later
+- x64 (64-bit) architecture
+- Administrator privileges for installation
+
+آ© 2025 SR3H Development Team

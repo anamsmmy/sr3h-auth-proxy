@@ -1,0 +1,342 @@
+<Window x:Class="MacroApp.Views.MacroFortActivationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="تفعيل ماكرو سرعة - SR3H Macro Activation"
+        Height="650" Width="800"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#F5F5F5"
+        FlowDirection="RightToLeft">
+
+    <Window.Resources>
+        <Style x:Key="HeaderTextBlock" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Margin" Value="0,0,0,15"/>
+        </Style>
+
+        <Style x:Key="LabelTextBlock" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="6" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1976D2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#0D47A1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#4CAF50"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#388E3C"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource ModernButton}">
+            <Setter Property="Background" Value="#F44336"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#D32F2F"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="30">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+            <TextBlock Text="🔐 تفعيل ماكرو سرعة"
+                       FontSize="24"
+                       FontWeight="Bold"
+                       Foreground="#2196F3"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,10"/>
+            
+            <TextBlock Text="SR3H Macro Fort Activation System"
+                       FontSize="12"
+                       Foreground="#666666"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,15"/>
+            
+            <TextBlock x:Name="HardwareIdText"
+                       Text="معرف الجهاز: ..."
+                       FontSize="10"
+                       Foreground="#999999"
+                       HorizontalAlignment="Center"
+                       FontFamily="Consolas"/>
+        </StackPanel>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="MainContent" Margin="0,0,0,20">
+                
+                <!-- Trial Section -->
+                <Border x:Name="TrialSection" Visibility="Collapsed"
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1" 
+                        CornerRadius="6" 
+                        Padding="20,15"
+                        Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Text="📅 نسخة تجريبية - 7 أيام" Style="{StaticResource HeaderTextBlock}"/>
+                        
+                        <TextBlock Text="أدخل بريدك الإلكتروني لتفعيل النسخة التجريبية:" Style="{StaticResource LabelTextBlock}"/>
+                        <TextBox x:Name="TrialEmailTextBox"
+                                 Height="40"
+                                 FontSize="14"
+                                 Padding="10"
+                                 Margin="0,0,0,15"
+                                 BorderBrush="#CCCCCC"
+                                 BorderThickness="1"/>
+                        
+                        <Button x:Name="TrialStartButton"
+                                Content="✅ بدء التجربة"
+                                Style="{StaticResource SuccessButton}"
+                                Height="45"
+                                FontSize="14"
+                                Click="TrialStartButton_Click"/>
+                        
+                        <TextBlock Text="ستتلقى رمز التحقق على بريدك الإلكتروني"
+                                   FontSize="11"
+                                   Foreground="#666666"
+                                   Margin="0,15,0,0"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Code Activation Section -->
+                <Border x:Name="CodeActivationSection" Visibility="Collapsed"
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1" 
+                        CornerRadius="6" 
+                        Padding="20,15"
+                        Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Text="🔑 تفعيل بكود الاشتراك" Style="{StaticResource HeaderTextBlock}"/>
+                        
+                        <TextBlock Text="البريد الإلكتروني:" Style="{StaticResource LabelTextBlock}"/>
+                        <TextBox x:Name="CodeEmailTextBox"
+                                 Height="40"
+                                 FontSize="14"
+                                 Padding="10"
+                                 Margin="0,0,0,15"
+                                 BorderBrush="#CCCCCC"
+                                 BorderThickness="1"/>
+                        
+                        <TextBlock Text="كود الاشتراك:" Style="{StaticResource LabelTextBlock}"/>
+                        <TextBox x:Name="CodeTextBox"
+                                 Height="40"
+                                 FontSize="14"
+                                 Padding="10"
+                                 Margin="0,0,0,15"
+                                 BorderBrush="#CCCCCC"
+                                 BorderThickness="1"
+                                 TextAlignment="Center"
+                                 FontFamily="Consolas"/>
+                        
+                        <Button x:Name="CodeActivateButton"
+                                Content="✅ تفعيل الاشتراك"
+                                Style="{StaticResource SuccessButton}"
+                                Height="45"
+                                FontSize="14"
+                                Click="CodeActivateButton_Click"/>
+                        
+                        <TextBlock Text="سيتم إرسال رمز التحقق إلى بريدك الإلكتروني"
+                                   FontSize="11"
+                                   Foreground="#666666"
+                                   Margin="0,15,0,0"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Rebind Section -->
+                <Border x:Name="RebindSection" Visibility="Collapsed"
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1" 
+                        CornerRadius="6" 
+                        Padding="20,15"
+                        Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Text="🔄 إعادة ربط الجهاز" Style="{StaticResource HeaderTextBlock}"/>
+                        
+                        <TextBlock Foreground="#FF9800" FontWeight="Bold" Margin="0,0,0,15">
+                            ⚠️ هذه الميزة تسمح بنقل الاشتراك إلى جهاز آخر
+                        </TextBlock>
+                        
+                        <TextBlock Text="البريد الإلكتروني المسجل:" Style="{StaticResource LabelTextBlock}"/>
+                        <TextBox x:Name="RebindEmailTextBox"
+                                 Height="40"
+                                 FontSize="14"
+                                 Padding="10"
+                                 Margin="0,0,0,15"
+                                 BorderBrush="#CCCCCC"
+                                 BorderThickness="1"/>
+                        
+                        <TextBlock Text="كود الاشتراك:" Style="{StaticResource LabelTextBlock}"/>
+                        <TextBox x:Name="RebindCodeTextBox"
+                                 Height="40"
+                                 FontSize="14"
+                                 Padding="10"
+                                 Margin="0,0,0,15"
+                                 BorderBrush="#CCCCCC"
+                                 BorderThickness="1"
+                                 TextAlignment="Center"
+                                 FontFamily="Consolas"/>
+                        
+                        <Button x:Name="RebindButton"
+                                Content="✅ إعادة الربط"
+                                Style="{StaticResource ModernButton}"
+                                Background="#FF9800"
+                                Height="45"
+                                FontSize="14"
+                                Click="RebindButton_Click"/>
+                        
+                        <TextBlock Text="سيتم إرسال رمز التحقق إلى بريدك الإلكتروني"
+                                   FontSize="11"
+                                   Foreground="#666666"
+                                   Margin="0,15,0,0"
+                                   TextAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- OTP Verification Section (Shared) -->
+                <Border x:Name="VerificationSection" Visibility="Collapsed"
+                        Background="White" 
+                        BorderBrush="#E0E0E0" 
+                        BorderThickness="1" 
+                        CornerRadius="6" 
+                        Padding="20,15"
+                        Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock Text="✉️ التحقق من البريد الإلكتروني" Style="{StaticResource HeaderTextBlock}"/>
+                        
+                        <TextBlock Text="أدخل رمز التحقق المرسل إلى بريدك:" Style="{StaticResource LabelTextBlock}"/>
+                        <TextBox x:Name="OtpTextBox"
+                                 Height="50"
+                                 FontSize="18"
+                                 Padding="10"
+                                 Margin="0,0,0,15"
+                                 BorderBrush="#2196F3"
+                                 BorderThickness="2"
+                                 TextAlignment="Center"
+                                 FontFamily="Consolas"
+                                 MaxLength="6"/>
+                        
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            
+                            <Button Grid.Column="0"
+                                    x:Name="VerifyOtpButton"
+                                    Content="✅ تحقق"
+                                    Style="{StaticResource SuccessButton}"
+                                    Height="45"
+                                    FontSize="14"
+                                    Click="VerifyOtpButton_Click"/>
+                            
+                            <Button Grid.Column="2"
+                                    x:Name="ResendOtpButton"
+                                    Content="🔄 إعادة إرسال"
+                                    Style="{StaticResource ModernButton}"
+                                    Height="45"
+                                    FontSize="14"
+                                    Click="ResendOtpButton_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Status Messages -->
+                <Border x:Name="SuccessSection" Visibility="Collapsed"
+                        Background="#E8F5E9" 
+                        BorderBrush="#4CAF50" 
+                        BorderThickness="1" 
+                        CornerRadius="6" 
+                        Padding="15,12"
+                        Margin="0,0,0,15">
+                    <StackPanel>
+                        <TextBlock x:Name="SuccessMessageText"
+                                   Text="✅ تم التفعيل بنجاح!"
+                                   FontSize="14"
+                                   FontWeight="Bold"
+                                   Foreground="#2E7D32"
+                                   Margin="0,0,0,10"/>
+                        
+                        <TextBlock x:Name="SubscriptionDetailsText"
+                                   Text=""
+                                   FontSize="12"
+                                   Foreground="#1B5E20"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Error Messages -->
+                <Border x:Name="ErrorSection" Visibility="Collapsed"
+                        Background="#FFEBEE" 
+                        BorderBrush="#F44336" 
+                        BorderThickness="1" 
+                        CornerRadius="6" 
+                        Padding="15,12"
+                        Margin="0,0,0,15">
+                    <TextBlock x:Name="ErrorMessageText"
+                               Text="❌ حدث خطأ"
+                               FontSize="12"
+                               Foreground="#C62828"
+                               TextWrapping="Wrap"/>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Footer -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Center" FlowDirection="LeftToRight">
+            <Button x:Name="CloseButton"
+                    Content="إغلاق"
+                    Style="{StaticResource DangerButton}"
+                    Width="120"
+                    Height="45"
+                    FontSize="13"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

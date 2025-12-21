@@ -1,0 +1,138 @@
+<Window x:Class="MacroApp.Views.TestWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="اختبار الأزرار - Button Test" 
+        Height="1050" 
+        Width="1250"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        Background="{StaticResource BackgroundBrush}"
+        FlowDirection="RightToLeft">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- العنوان -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,20">
+            <TextBlock Text="اختبار الأزرار والمفاتيح" 
+                       FontSize="18" 
+                       FontWeight="Bold" 
+                       HorizontalAlignment="Center"
+                       Foreground="{StaticResource TextBrush}"/>
+            <TextBlock Text="اضغط على أي مفتاح أو زر ماوس لاختباره" 
+                       FontSize="12" 
+                       HorizontalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- منطقة الاختبار -->
+        <Border Grid.Row="1" 
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="2"
+                CornerRadius="8"
+                Padding="20">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- عرض المفتاح المضغوط -->
+                <StackPanel Grid.Row="0" HorizontalAlignment="Center" Margin="0,0,0,20">
+                    <TextBlock Text="المفتاح المضغوط:" 
+                               FontSize="14" 
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"/>
+                    <Border Background="{StaticResource PrimaryBrush}"
+                            CornerRadius="8"
+                            Padding="20,10"
+                            Margin="0,10,0,0">
+                        <TextBlock x:Name="KeyDisplayText" 
+                                   Text="اضغط على أي مفتاح..."
+                                   FontSize="24"
+                                   FontWeight="Bold"
+                                   Foreground="White"
+                                   HorizontalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- معلومات الضغطة -->
+                <Grid Grid.Row="1" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                        <TextBlock Text="نوع الضغطة:" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="KeyTypeText" Text="-" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                        <TextBlock Text="وقت الضغطة:" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="KeyTimeText" Text="-" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                        <TextBlock Text="عدد الضغطات:" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                        <TextBlock x:Name="KeyCountText" Text="0" FontSize="14" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- إحصائيات سرعة الاستجابة -->
+                <StackPanel Grid.Row="2" Margin="0,0,0,20">
+                    <TextBlock Text="سرعة الاستجابة:" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                    <ProgressBar x:Name="ResponseSpeedBar" 
+                                 Height="20" 
+                                 Minimum="0" 
+                                 Maximum="100" 
+                                 Value="0"
+                                 Margin="0,10,0,0"/>
+                    <TextBlock x:Name="ResponseSpeedText" 
+                               Text="0 ms" 
+                               FontSize="12" 
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,0"/>
+                </StackPanel>
+
+                <!-- سجل الضغطات -->
+                <StackPanel Grid.Row="3">
+                    <TextBlock Text="سجل الضغطات:" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                    <ScrollViewer Height="150" VerticalScrollBarVisibility="Auto">
+                        <ListBox x:Name="KeyLogListBox" 
+                                 Background="Transparent"
+                                 BorderThickness="0"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- الأزرار -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Center" 
+                    Margin="0,20,0,0">
+            <Button Content="مسح السجل" 
+                    Style="{StaticResource ModernButton}"
+                    Width="100"
+                    Height="35"
+                    Margin="0,0,10,0"
+                    Click="ClearLogButton_Click"/>
+            <Button Content="إغلاق" 
+                    Style="{StaticResource ModernButton}"
+                    Width="80"
+                    Height="35"
+                    Click="CloseButton_Click"
+                    IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

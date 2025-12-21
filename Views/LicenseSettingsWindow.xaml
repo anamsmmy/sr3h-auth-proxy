@@ -1,0 +1,195 @@
+<Window x:Class="MacroApp.Views.LicenseSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="إعدادات الترخيص - SR3H MACRO" 
+        Width="600" 
+        Height="500"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanResize"
+        Icon="../icon.ico"
+        FlowDirection="RightToLeft">
+
+    <Window.Resources>
+        <Style x:Key="ModernButton" TargetType="Button">
+            <Setter Property="Background" Value="#2196F3"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="5" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                            VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#1976D2"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter Property="Background" Value="#0D47A1"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="InfoCard" TargetType="Border">
+            <Setter Property="Background" Value="#F8F9FA"/>
+            <Setter Property="BorderBrush" Value="#E0E0E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="Margin" Value="0,10"/>
+        </Style>
+
+        <!-- Eye Button Style -->
+        <Style x:Key="EyeButton" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="#666666"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="3" 
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E0E0E0"/>
+                                <Setter Property="Foreground" Value="#2196F3"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Sensitive Data Container Style -->
+        <Style x:Key="SensitiveDataContainer" TargetType="StackPanel">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" HorizontalAlignment="Center">
+            <TextBlock Text="🔐 إعدادات الترخيص" 
+                       FontSize="24" 
+                       FontWeight="Bold" 
+                       HorizontalAlignment="Center"
+                       Foreground="#2196F3"
+                       Margin="0,0,0,5"/>
+            <TextBlock Text="معلومات وإدارة ترخيص SR3H MACRO" 
+                       FontSize="14" 
+                       HorizontalAlignment="Center"
+                       Foreground="#666666"/>
+        </StackPanel>
+
+        <!-- License Status -->
+        <Border Grid.Row="2" Style="{StaticResource InfoCard}">
+            <StackPanel>
+                <TextBlock Text="📊 حالة الترخيص" 
+                           FontSize="18" 
+                           FontWeight="Bold" 
+                           Foreground="#2196F3"
+                           Margin="0,0,0,15"/>
+                
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="150"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="10"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="الحالة:" FontWeight="Bold"/>
+                    <TextBlock x:Name="StatusTextBlock" Grid.Row="0" Grid.Column="1" Text="جاري التحقق..." Foreground="#666666"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Text="البريد الإلكتروني:" FontWeight="Bold"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1" Style="{StaticResource SensitiveDataContainer}">
+                        <TextBlock x:Name="EmailTextBlock" Text="غير متوفر" Foreground="#666666" Margin="0,0,10,0"/>
+                        <Button x:Name="EmailToggleButton" 
+                                Style="{StaticResource EyeButton}" 
+                                Content="👁" 
+                                ToolTip="إظهار/إخفاء البريد الإلكتروني"
+                                Click="EmailToggleButton_Click"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="4" Grid.Column="0" Text="كود التفعيل:" FontWeight="Bold"/>
+                    <StackPanel Grid.Row="4" Grid.Column="1" Style="{StaticResource SensitiveDataContainer}">
+                        <TextBlock x:Name="SubscriptionCodeTextBlock" Text="غير متوفر" Foreground="#666666" Margin="0,0,10,0"/>
+                        <Button x:Name="SubscriptionCodeToggleButton" 
+                                Style="{StaticResource EyeButton}" 
+                                Content="👁" 
+                                ToolTip="إظهار/إخفاء كود التفعيل"
+                                Click="SubscriptionCodeToggleButton_Click"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Row="6" Grid.Column="0" Text="تاريخ التفعيل:" FontWeight="Bold"/>
+                    <TextBlock x:Name="ActivationDateTextBlock" Grid.Row="6" Grid.Column="1" Text="غير متوفر" Foreground="#666666"/>
+
+                    <TextBlock Grid.Row="8" Grid.Column="0" Text="آخر تحقق:" FontWeight="Bold"/>
+                    <TextBlock x:Name="LastCheckTextBlock" Grid.Row="8" Grid.Column="1" Text="غير متوفر" Foreground="#666666"/>
+
+                    <TextBlock Grid.Row="10" Grid.Column="0" Text="انتهاء الصلاحية:" FontWeight="Bold"/>
+                    <TextBlock x:Name="ExpiryTextBlock" Grid.Row="10" Grid.Column="1" Text="غير متوفر" Foreground="#666666"/>
+                </Grid>
+                
+                <!-- Reactivation Button -->
+                <Button x:Name="ReactivateButton" 
+                        Content="🔓 إعادة التفعيل"
+                        Style="{StaticResource ModernButton}"
+                        Background="#FF9800"
+                        Height="40"
+                        Margin="0,20,0,0"
+                        HorizontalAlignment="Center"
+                        MinWidth="150"
+                        Click="ReactivateButton_Click"/>
+            </StackPanel>
+        </Border>
+
+
+
+        <!-- Status Message -->
+        <TextBlock x:Name="MessageTextBlock" 
+                   Grid.Row="4"
+                   Text=""
+                   FontSize="12"
+                   HorizontalAlignment="Center"
+                   Foreground="#666666"
+                   TextWrapping="Wrap"/>
+    </Grid>
+</Window>
