@@ -84,7 +84,11 @@ app.get('/', (req, res) => {
       '/verify-otp': 'POST - التحقق من رمز البريد',
       '/save-otp': 'POST - حفظ رمز OTP مع معرف الجهاز',
       '/initiate-device-transfer': 'POST - بدء نقل الجهاز',
-      '/complete-device-transfer': 'POST - إكمال نقل الجهاز'
+      '/complete-device-transfer': 'POST - إكمال نقل الجهاز',
+      '/continue-trial-with-otp': 'POST - استمرار الفترة التجريبية',
+      '/check-code-device-mismatch': 'POST - فحص مطابقة الكود',
+      '/rebind-subscription-code': 'POST - بدء إعادة ربط الكود',
+      '/confirm-code-rebind': 'POST - تأكيد إعادة ربط الكود'
     }
   });
 });
@@ -1418,6 +1422,164 @@ app.post('/get-subscription-by-hardware', authLimiter, async (req, res) => {
     res.status(error.response?.status || 500).json({
       success: false,
       message: 'خطأ في جلب الاشتراك'
+    });
+  }
+});
+
+// ============================================================================
+// PHASE 5 ENDPOINTS: Trial Grace Period & Code Rebinding
+// ============================================================================
+
+// POST /continue-trial-with-otp - Continue trial after deletion/reinstall
+app.post('/continue-trial-with-otp', authLimiter, async (req, res) => {
+  try {
+    const { email, device_fingerprint_hash, otp_code } = req.body;
+
+    if (!email || !device_fingerprint_hash || !otp_code) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: email أو device_fingerprint_hash أو otp_code'
+      });
+    }
+
+    const response = await axios.post(
+      `${SUPABASE_URL}/rest/v1/rpc/continue_trial_with_otp`,
+      {
+        p_device_fingerprint_hash: device_fingerprint_hash,
+        p_email: email,
+        p_otp_code: otp_code
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ استمرار الفترة التجريبية لـ ${email}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error('❌ خطأ في استمرار الفترة التجريبية:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || 'خطأ في استمرار الفترة التجريبية'
+    });
+  }
+});
+
+// POST /check-code-device-mismatch - Detect if code is on different device
+app.post('/check-code-device-mismatch', async (req, res) => {
+  try {
+    const { code, current_device_fingerprint } = req.body;
+
+    if (!code || !current_device_fingerprint) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو current_device_fingerprint'
+      });
+    }
+
+    const response = await axios.post(
+      `${SUPABASE_URL}/rest/v1/rpc/check_code_device_mismatch`,
+      {
+        p_code: code,
+        p_current_device_fingerprint: current_device_fingerprint
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`🔍 فحص مطابقة الكود: ${code}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error('❌ خطأ في فحص مطابقة الكود:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || 'خطأ في فحص الكود'
+    });
+  }
+});
+
+// POST /rebind-subscription-code - Initiate code rebinding (send OTP)
+app.post('/rebind-subscription-code', authLimiter, async (req, res) => {
+  try {
+    const { linked_email } = req.body;
+
+    if (!linked_email) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: linked_email'
+      });
+    }
+
+    const response = await axios.post(
+      `${SUPABASE_URL}/rest/v1/rpc/rebind_subscription_code`,
+      {
+        p_linked_email: linked_email
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`📧 إرسال رمز إعادة الربط لـ ${linked_email}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error('❌ خطأ في إعادة ربط الكود:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || 'خطأ في إعادة ربط الكود'
+    });
+  }
+});
+
+// POST /confirm-code-rebind - Confirm code rebinding with OTP verification
+app.post('/confirm-code-rebind', authLimiter, async (req, res) => {
+  try {
+    const { code, linked_email, otp_code, new_device_fingerprint } = req.body;
+
+    if (!code || !linked_email || !otp_code || !new_device_fingerprint) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو linked_email أو otp_code أو new_device_fingerprint'
+      });
+    }
+
+    const response = await axios.post(
+      `${SUPABASE_URL}/rest/v1/rpc/rebind_subscription_code`,
+      {
+        p_code: code,
+        p_linked_email: linked_email,
+        p_otp_code: otp_code,
+        p_new_device_fingerprint: new_device_fingerprint
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    console.log(`✅ تأكيد إعادة ربط الكود: ${code}`);
+    res.json(response.data);
+  } catch (error) {
+    console.error('❌ خطأ في تأكيد إعادة الربط:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: error.response?.data?.message || 'خطأ في تأكيد إعادة الربط'
     });
   }
 });
