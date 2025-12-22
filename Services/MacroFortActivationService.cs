@@ -1079,30 +1079,22 @@ namespace MacroApp.Services
                 }
 
                 var content = await response.Content.ReadAsStringAsync();
-                var records = JsonConvert.DeserializeObject<List<dynamic>>(content);
+                var result = JsonConvert.DeserializeObject<dynamic>(content);
 
-                if (records == null || records.Count == 0)
+                if (result == null)
                 {
                     System.Diagnostics.Debug.WriteLine("❌ لم يتم العثور على رمز OTP");
                     return null;
                 }
 
-                var record = records[0];
-                var expiresAtStr = record.expires_at?.ToString();
-                
-                if (!string.IsNullOrEmpty(expiresAtStr))
+                bool success = result["success"]?.ToObject<bool>() ?? false;
+                if (!success)
                 {
-                    if (DateTime.TryParse(expiresAtStr, out DateTime expiresAt))
-                    {
-                        if (expiresAt < DateTime.UtcNow)
-                        {
-                            System.Diagnostics.Debug.WriteLine("❌ كود OTP منتهي الصلاحية");
-                            return null;
-                        }
-                    }
+                    System.Diagnostics.Debug.WriteLine("❌ فشل التحقق من OTP");
+                    return null;
                 }
 
-                var hardwareId = record.hardware_id?.ToString();
+                var hardwareId = result["hardware_id"]?.ToString();
                 System.Diagnostics.Debug.WriteLine($"✓ تم التحقق من OTP بنجاح - Hardware ID: {hardwareId}");
                 return hardwareId;
             }
