@@ -88,6 +88,7 @@ app.get('/', (req, res) => {
       '/continue-trial-with-otp': 'POST - استمرار الفترة التجريبية',
       '/check-code-device-mismatch': 'POST - فحص مطابقة الكود',
       '/rebind-subscription-code': 'POST - بدء إعادة ربط الكود',
+      '/get-subscription-by-email': 'POST - جلب الاشتراك بالبريد الإلكتروني',
       '/confirm-code-rebind': 'POST - تأكيد إعادة ربط الكود'
     }
   });
@@ -1585,6 +1586,53 @@ app.post('/confirm-code-rebind', authLimiter, async (req, res) => {
 });
 
 // 404
+
+// POST /get-subscription-by-email - Get subscription by email address
+app.post('/get-subscription-by-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: email'
+      });
+    }
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const subscription = response.data[0];
+      console.log(`✅ وجد اشتراك للبريد ${email}`);
+      return res.json({
+        success: true,
+        message: 'تم العثور على الاشتراك',
+        subscription: subscription
+      });
+    }
+
+    console.log(`ℹ️ لا توجد بيانات اشتراك للبريد ${email}`);
+    return res.status(404).json({
+      success: false,
+      message: 'لم يتم العثور على اشتراك للبريد المحدد'
+    });
+  } catch (error) {
+    console.error('❌ خطأ في جلب الاشتراك بالبريد:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في جلب الاشتراك'
+    });
+  }
+});
+
 app.use((req, res) => {
   res.status(404).json({
     success: false,
