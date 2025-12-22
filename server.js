@@ -546,7 +546,66 @@ app.post('/generate-otp', authLimiter, async (req, res) => {
   }
 });
 
-// POST /verify-otp - التحقق من رمز البريد الإلكتروني
+// GET /verify-otp - التحقق من رمز البريد الإلكتروني (query params)
+app.get('/verify-otp', authLimiter, async (req, res) => {
+  try {
+    const { email, code } = req.query;
+
+    if (!email || !code) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: email أو code'
+      });
+    }
+
+    console.log(`🔍 البحث عن OTP: البريد=${email}, الكود=${code}`);
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_verification_codes?email=eq.${encodeURIComponent(email)}&otp_code=eq.${code}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const record = response.data[0];
+      const expiresAt = new Date(record.expires_at);
+      const now = new Date();
+
+      if (expiresAt > now) {
+        console.log(`✅ OTP صحيح لـ ${email}`);
+        return res.status(200).json({
+          success: true,
+          message: 'OTP صحيح',
+          hardware_id: record.hardware_id
+        });
+      } else {
+        console.log(`⏰ OTP منتهي الصلاحية لـ ${email}`);
+        return res.status(400).json({
+          success: false,
+          message: 'OTP منتهي الصلاحية'
+        });
+      }
+    }
+
+    console.log(`❌ لم يتم العثور على OTP للبريد ${email}`);
+    return res.status(404).json({
+      success: false,
+      message: 'OTP غير موجود أو غير صحيح'
+    });
+  } catch (error) {
+    console.error('❌ OTP verification error:', error.response?.data || error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في التحقق من OTP'
+    });
+  }
+});
+
+// POST /verify-otp - التحقق من رمز البريد الإلكتروني (body params)
 app.post('/verify-otp', authLimiter, async (req, res) => {
   try {
     const { email, otp_code, hardware_id } = req.body;
