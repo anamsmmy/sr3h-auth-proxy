@@ -253,7 +253,7 @@ app.post('/activate', authLimiter, async (req, res) => {
         `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
         {
           hardware_id: hardware_id,
-          activated_date: new Date().toISOString(),
+          activation_date: new Date().toISOString(),
           is_active: true,
           is_trial: true,
           expiry_date: expiryDate.toISOString()
@@ -272,7 +272,7 @@ app.post('/activate', authLimiter, async (req, res) => {
         {
           email: email,
           hardware_id: hardware_id,
-          activated_date: new Date().toISOString(),
+          activation_date: new Date().toISOString(),
           is_active: true,
           is_trial: true,
           subscription_type: 'trial',
@@ -460,7 +460,7 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
           subscription_code: code,
           expiry_date: expiryDate.toISOString(),
           status: 'active',
-          activated_date: new Date().toISOString()
+          activation_date: new Date().toISOString()
         },
         {
           headers: {
@@ -480,7 +480,7 @@ app.post('/redeem-code', authLimiter, async (req, res) => {
           subscription_type: codeRecord.subscription_type,
           status: 'active',
           expiry_date: expiryDate.toISOString(),
-          activated_date: new Date().toISOString(),
+          activation_date: new Date().toISOString(),
           trial_days: 0
         },
         {
