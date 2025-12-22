@@ -32,8 +32,8 @@ namespace MacroApp.Services
         private const int MIN_OTP_REQUEST_INTERVAL_SECONDS = 60;
         private const int MAX_OTP_REQUESTS_PER_10_MINUTES = 5;
         private const int THROTTLE_DURATION_MINUTES = 15;
-        private const int DEVICE_TRANSFER_LIMIT_30_DAYS = 2;
-        private const int REBIND_LIMIT_LONG_PLANS = 3;
+        private const int DEVICE_TRANSFER_LIMIT_30_DAYS = 10;
+        private const int CODE_REBIND_LIMIT_30_DAYS = 10;
         private const int GRACE_PERIOD_MINUTES = 5;
         private const int BACKGROUND_CHECK_INTERVAL_SECONDS = 30;
         
@@ -47,6 +47,27 @@ namespace MacroApp.Services
         {
             _codeService = new SubscriptionCodeService();
             StartBackgroundCheck();
+        }
+
+        public static string MaskEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email) || !email.Contains("@"))
+                return email;
+
+            var parts = email.Split('@');
+            var localPart = parts[0];
+            var domain = parts[1];
+
+            var maskedLocal = localPart.Length <= 2 
+                ? localPart 
+                : $"{localPart[0]}{'*' * (localPart.Length - 2)}{localPart[localPart.Length - 1]}";
+
+            var domainParts = domain.Split('.');
+            var maskedDomain = domainParts.Length > 1
+                ? $"{domainParts[0][0]}{'*' * (domainParts[0].Length - 1)}@{string.Join(".", domainParts.Skip(1))}"
+                : $"{domainParts[0][0]}***";
+
+            return $"{maskedLocal}@{maskedDomain}";
         }
         
         ~MacroFortActivationService()
@@ -1288,12 +1309,15 @@ namespace MacroApp.Services
             return null;
         }
 
-        public async Task<MacroFortSubscriptionData> GetSubscriptionByEmailAsync(string email)
+        public async Task<MacroFortSubscription> GetSubscriptionByEmailAsync(string email)
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine($"🔗 طلب الاشتراك عبر Railway للـ email: {email}");
                 
+                if (string.IsNullOrWhiteSpace(email))
+                    return null;
+
                 using (var client = new HttpClient())
                 {
                     var requestData = new { email = email };
@@ -1307,14 +1331,28 @@ namespace MacroApp.Services
                     {
                         var responseContent = await response.Content.ReadAsStringAsync();
                         System.Diagnostics.Debug.WriteLine($"✓ استجابة ناجحة من Railway");
-                        var subscription = JsonConvert.DeserializeObject<MacroFortSubscriptionData>(responseContent);
                         
-                        if (subscription != null)
+                        try
                         {
-                            System.Diagnostics.Debug.WriteLine($"✓ تم جلب الاشتراك من Railway بنجاح");
-                            return subscription;
+                            var jsonObject = JsonConvert.DeserializeObject<dynamic>(responseContent);
+                            if (jsonObject?.success == true && jsonObject?.subscription != null)
+                            {
+                                var subscription = JsonConvert.DeserializeObject<MacroFortSubscription>(
+                                    JsonConvert.SerializeObject(jsonObject.subscription)
+                                );
+                                
+                                if (subscription != null)
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"✓ تم جلب الاشتراك من Railway بنجاح");
+                                    return subscription;
+                                }
+                            }
+                            System.Diagnostics.Debug.WriteLine("⚠️ لا توجد نتائج للبريد");
                         }
-                        System.Diagnostics.Debug.WriteLine("⚠️ لا توجد نتائج للبريد");
+                        catch (Exception parseEx)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"⚠️ خطأ في تحليل استجابة الخادم: {parseEx.Message}");
+                        }
                     }
                     else
                     {
@@ -1798,6 +1836,279 @@ namespace MacroApp.Services
                 return "unknown";
             }
         }
+
+        /// <summary>
+        /// متابعة الفترة التجريبية بعد التحقق من البريد الإلكتروني عبر OTP
+        /// يُستخدم عند: حذف وإعادة تثبيت التطبيق أثناء الفترة التجريبية
+        /// </summary>
+        public async Task<MacroFortActivationResult> ContinueTrialWithOtpAsync(string email, string deviceFingerprintHash, string otpCode)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔄 متابعة الفترة التجريبية للبريد: {email}");
+
+                if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(deviceFingerprintHash) || string.IsNullOrWhiteSpace(otpCode))
+                    return new MacroFortActivationResult
+                    {
+                        IsSuccess = false,
+                        Message = "البيانات المطلوبة ناقصة",
+                        ResultType = "invalid_input"
+                    };
+
+                if (!await CheckInternetConnectionAsync())
+                    return new MacroFortActivationResult
+                    {
+                        IsSuccess = false,
+                        Message = "لا يوجد اتصال إنترنت",
+                        ResultType = "no_internet"
+                    };
+
+                using (var client = new HttpClient())
+                {
+                    var requestData = new
+                    {
+                        email = email,
+                        device_fingerprint_hash = deviceFingerprintHash,
+                        otp_code = otpCode
+                    };
+
+                    var json = JsonConvert.SerializeObject(requestData);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var url = $"{RAILWAY_PROXY_URL}/continue-trial-with-otp";
+
+                    System.Diagnostics.Debug.WriteLine($"🔗 استدعاء Railway Proxy: /continue-trial-with-otp");
+                    var response = await client.PostAsync(url, content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var result = JsonConvert.DeserializeObject<dynamic>(responseContent);
+
+                        System.Diagnostics.Debug.WriteLine($"✓ تم متابعة الفترة التجريبية بنجاح");
+
+                        var subscriptionData = await GetSubscriptionByEmailAsync(email);
+                        
+                        return new MacroFortActivationResult
+                        {
+                            IsSuccess = true,
+                            Message = "تم استكمال الفترة التجريبية بنجاح",
+                            ResultType = "trial_continued",
+                            ExpiryDate = subscriptionData?.ExpiryDate ?? DateTime.UtcNow.AddDays(TRIAL_DURATION_DAYS),
+                            SubscriptionData = subscriptionData
+                        };
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"❌ فشل متابعة الفترة التجريبية: {response.StatusCode}");
+                        var errorData = JsonConvert.DeserializeObject<dynamic>(errorContent);
+                        var errorMessage = errorData?.message?.ToString() ?? "فشل في استكمال الفترة التجريبية";
+
+                        return new MacroFortActivationResult
+                        {
+                            IsSuccess = false,
+                            Message = errorMessage,
+                            ResultType = "trial_continuation_failed"
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ خطأ في متابعة الفترة التجريبية: {ex.Message}");
+                return new MacroFortActivationResult
+                {
+                    IsSuccess = false,
+                    Message = $"خطأ: {ex.Message}",
+                    ResultType = "error"
+                };
+            }
+        }
+
+        /// <summary>
+        /// فحص مطابقة الكود مع جهاز المستخدم الحالي
+        /// يكتشف إذا كان الكود مرتبطاً بجهاز آخر
+        /// </summary>
+        public async Task<MacroFortActivationResult> CheckCodeDeviceMismatchAsync(string subscriptionCode, string currentHardwareId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔍 فحص مطابقة الكود مع الجهاز الحالي للكود: {subscriptionCode}");
+
+                if (string.IsNullOrWhiteSpace(subscriptionCode) || string.IsNullOrWhiteSpace(currentHardwareId))
+                    return new MacroFortActivationResult
+                    {
+                        IsSuccess = false,
+                        Message = "بيانات ناقصة",
+                        ResultType = "invalid_input"
+                    };
+
+                if (!await CheckInternetConnectionAsync())
+                    return new MacroFortActivationResult
+                    {
+                        IsSuccess = false,
+                        Message = "لا يوجد اتصال إنترنت",
+                        ResultType = "no_internet"
+                    };
+
+                using (var client = new HttpClient())
+                {
+                    var requestData = new
+                    {
+                        code = subscriptionCode,
+                        current_device_fingerprint = currentHardwareId
+                    };
+
+                    var json = JsonConvert.SerializeObject(requestData);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var url = $"{RAILWAY_PROXY_URL}/check-code-device-mismatch";
+
+                    System.Diagnostics.Debug.WriteLine($"🔗 استدعاء Railway Proxy: /check-code-device-mismatch");
+                    var response = await client.PostAsync(url, content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var result = JsonConvert.DeserializeObject<dynamic>(responseContent);
+                        var isMismatch = result?.mismatch ?? false;
+
+                        if (isMismatch)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"⚠️ الكود مرتبط بجهاز آخر - يتطلب إعادة ربط");
+                            return new MacroFortActivationResult
+                            {
+                                IsSuccess = false,
+                                Message = result?.message?.ToString() ?? "هذا الكود مرتبط على جهاز آخر - هل أنت صاحب الكود؟",
+                                ResultType = "code_device_mismatch",
+                                LinkedEmail = result?.linked_email?.ToString()
+                            };
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"✓ الكود متطابق مع الجهاز الحالي");
+                            return new MacroFortActivationResult
+                            {
+                                IsSuccess = true,
+                                Message = "الكود متطابق مع الجهاز الحالي",
+                                ResultType = "code_device_match",
+                                LinkedEmail = result?.linked_email?.ToString()
+                            };
+                        }
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"❌ فشل فحص مطابقة الكود: {response.StatusCode}");
+                        return new MacroFortActivationResult
+                        {
+                            IsSuccess = false,
+                            Message = "فشل فحص الكود من الخادم",
+                            ResultType = "check_failed"
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ خطأ في فحص مطابقة الكود: {ex.Message}");
+                return new MacroFortActivationResult
+                {
+                    IsSuccess = false,
+                    Message = $"خطأ: {ex.Message}",
+                    ResultType = "error"
+                };
+            }
+        }
+
+        /// <summary>
+        /// إعادة ربط الكود بجهاز جديد بعد التحقق من البريد الإلكتروني
+        /// </summary>
+        public async Task<MacroFortActivationResult> ConfirmCodeRebindAsync(string subscriptionCode, string linkedEmail, string otpCode, string newHardwareId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"🔄 تأكيد إعادة ربط الكود للجهاز الجديد: {subscriptionCode}");
+
+                if (string.IsNullOrWhiteSpace(subscriptionCode) || string.IsNullOrWhiteSpace(linkedEmail) || string.IsNullOrWhiteSpace(otpCode) || string.IsNullOrWhiteSpace(newHardwareId))
+                    return new MacroFortActivationResult
+                    {
+                        IsSuccess = false,
+                        Message = "البيانات المطلوبة ناقصة",
+                        ResultType = "invalid_input"
+                    };
+
+                if (!await CheckInternetConnectionAsync())
+                    return new MacroFortActivationResult
+                    {
+                        IsSuccess = false,
+                        Message = "لا يوجد اتصال إنترنت",
+                        ResultType = "no_internet"
+                    };
+
+                using (var client = new HttpClient())
+                {
+                    var requestData = new
+                    {
+                        code = subscriptionCode,
+                        linked_email = linkedEmail,
+                        otp_code = otpCode,
+                        new_device_fingerprint = newHardwareId
+                    };
+
+                    var json = JsonConvert.SerializeObject(requestData);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    var url = $"{RAILWAY_PROXY_URL}/rebind-subscription-code";
+
+                    System.Diagnostics.Debug.WriteLine($"🔗 استدعاء Railway Proxy: /rebind-subscription-code");
+                    var response = await client.PostAsync(url, content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var responseContent = await response.Content.ReadAsStringAsync();
+                        var result = JsonConvert.DeserializeObject<dynamic>(responseContent);
+
+                        System.Diagnostics.Debug.WriteLine($"✓ تم إعادة ربط الكود بنجاح");
+
+                        var subscriptionData = await GetSubscriptionByEmailAsync(linkedEmail);
+                        
+                        return new MacroFortActivationResult
+                        {
+                            IsSuccess = true,
+                            Message = "تم إعادة ربط الكود بنجاح",
+                            ResultType = "rebind_success",
+                            ExpiryDate = subscriptionData?.ExpiryDate,
+                            SubscriptionData = subscriptionData
+                        };
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        System.Diagnostics.Debug.WriteLine($"❌ فشل إعادة ربط الكود: {response.StatusCode}");
+                        var errorData = JsonConvert.DeserializeObject<dynamic>(errorContent);
+                        var errorMessage = errorData?.message?.ToString() ?? "فشل إعادة ربط الكود";
+
+                        return new MacroFortActivationResult
+                        {
+                            IsSuccess = false,
+                            Message = errorMessage,
+                            ResultType = "rebind_failed"
+                        };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ خطأ في إعادة ربط الكود: {ex.Message}");
+                return new MacroFortActivationResult
+                {
+                    IsSuccess = false,
+                    Message = $"خطأ: {ex.Message}",
+                    ResultType = "error"
+                };
+            }
+        }
+
+
 
         /// <summary>
         /// استرجاع الكود عبر Auth Proxy (/redeem-code endpoint)
