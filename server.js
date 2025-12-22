@@ -101,38 +101,64 @@ app.post('/verify', authLimiter, async (req, res) => {
       });
     }
 
-    const response = await axios.get(
-      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&hardware_id=eq.${encodeURIComponent(hardware_id)}&select=*`,
-      {
-        headers: {
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY
+    try {
+      const response = await axios.get(
+        `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&hardware_id=eq.${encodeURIComponent(hardware_id)}&select=*`,
+        {
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY
+          }
+        }
+      );
+
+      if (response.data && response.data.length > 0) {
+        const subscription = response.data[0];
+        const expiryDate = new Date(subscription.expiry_date);
+        const now = new Date();
+        const isActive = subscription.is_active && expiryDate > now;
+
+        if (isActive) {
+          console.log(`✅ تحقق ناجح لـ ${email} - الاشتراك نشط من IP: ${req.ip}`);
+          return res.status(200).json({
+            success: true,
+            subscription_type: subscription.subscription_type,
+            is_active: subscription.is_active,
+            expiry_date: subscription.expiry_date,
+            activation_date: subscription.activation_date,
+            is_trial: subscription.is_trial,
+            message: 'trial_exists_not_expired',
+            existing_subscription: true
+          });
+        } else {
+          console.log(`⏰ انتهت الاشتراك لـ ${email} - تاريخ الانتهاء: ${subscription.expiry_date}`);
+          return res.status(200).json({
+            success: false,
+            message: 'انتهت صلاحية الاشتراك',
+            expiry_date: subscription.expiry_date,
+            is_active: subscription.is_active
+          });
         }
       }
-    );
 
-    if (response.data && response.data.length > 0) {
-      const subscription = response.data[0];
-      console.log(`✅ تحقق ناجح لـ ${email} من IP: ${req.ip}`);
-      return res.json({
+      console.log(`ℹ️ لا توجد بيانات اشتراك لـ ${email} مع ${hardware_id} - جهاز جديد`);
+      return res.status(200).json({
         success: true,
-        subscription_type: subscription.subscription_type,
-        status: subscription.status,
-        expiry_date: subscription.expiry_date,
-        activated_date: subscription.activated_date,
-        trial_days: subscription.trial_days
+        message: 'لم يتم العثور على اشتراك سابق - يحق للمستخدم بدء تجربة جديدة',
+        existing_subscription: false
+      });
+    } catch (dbError) {
+      console.error('❌ خطأ في قاعدة البيانات:', dbError.message);
+      return res.status(500).json({
+        success: false,
+        message: 'خطأ في الوصول إلى قاعدة البيانات'
       });
     }
-
-    return res.json({
-      success: false,
-      message: 'لم يتم العثور على اشتراك نشط'
-    });
   } catch (error) {
-    console.error('❌ خطأ في التحقق:', error.response?.data || error.message);
+    console.error('❌ خطأ عام في التحقق:', error.message);
     res.status(500).json({
       success: false,
-      message: 'خطأ من خادم التحقق'
+      message: 'خطأ في خادم التحقق'
     });
   }
 });
@@ -161,13 +187,27 @@ app.post('/verify-periodic', authLimiter, async (req, res) => {
 
     if (response.data && response.data.length > 0) {
       const subscription = response.data[0];
-      console.log(`✔ تحقق دوري لـ ${email}`);
-      return res.json({
-        success: true,
-        subscription_type: subscription.subscription_type,
-        status: subscription.status,
-        expiry_date: subscription.expiry_date
-      });
+      const expiryDate = new Date(subscription.expiry_date);
+      const now = new Date();
+      const isActive = subscription.is_active && expiryDate > now;
+
+      if (isActive) {
+        console.log(`✔ تحقق دوري لـ ${email} - الاشتراك نشط`);
+        return res.json({
+          success: true,
+          subscription_type: subscription.subscription_type,
+          is_active: subscription.is_active,
+          expiry_date: subscription.expiry_date
+        });
+      } else {
+        console.log(`⏰ انتهت التجربة في التحقق الدوري لـ ${email}`);
+        return res.json({
+          success: false,
+          message: 'انتهت صلاحية الاشتراك',
+          expiry_date: subscription.expiry_date,
+          is_active: subscription.is_active
+        });
+      }
     }
 
     return res.json({
@@ -205,13 +245,18 @@ app.post('/activate', authLimiter, async (req, res) => {
       }
     );
 
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 7);
+
     if (checkResponse.data && checkResponse.data.length > 0) {
       await axios.patch(
         `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}`,
         {
           hardware_id: hardware_id,
           activated_date: new Date().toISOString(),
-          status: 'active'
+          is_active: true,
+          is_trial: true,
+          expiry_date: expiryDate.toISOString()
         },
         {
           headers: {
@@ -228,9 +273,10 @@ app.post('/activate', authLimiter, async (req, res) => {
           email: email,
           hardware_id: hardware_id,
           activated_date: new Date().toISOString(),
-          status: 'active',
+          is_active: true,
+          is_trial: true,
           subscription_type: 'trial',
-          trial_days: 0
+          expiry_date: expiryDate.toISOString()
         },
         {
           headers: {
@@ -1225,6 +1271,94 @@ app.post('/complete-device-transfer', authLimiter, async (req, res) => {
     res.status(error.response?.status || 500).json({
       success: false,
       message: 'خطأ في نقل الجهاز'
+    });
+  }
+});
+
+// POST /get-subscription-by-email
+app.post('/get-subscription-by-email', authLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'مطلوب البريد الإلكتروني'
+      });
+    }
+
+    console.log(`🔍 جاري البحث عن اشتراك للبريد: ${email}`);
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?email=eq.${encodeURIComponent(email)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const subscription = response.data[0];
+      console.log(`✅ وجد اشتراك للبريد ${email}`);
+      return res.status(200).json(subscription);
+    }
+
+    console.log(`ℹ️ لا توجد بيانات اشتراك للبريد ${email}`);
+    return res.status(404).json({
+      success: false,
+      message: 'لا توجد بيانات اشتراك للبريد المحدد'
+    });
+  } catch (error) {
+    console.error('❌ خطأ في جلب الاشتراك بالبريد:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في جلب الاشتراك'
+    });
+  }
+});
+
+// POST /get-subscription-by-hardware
+app.post('/get-subscription-by-hardware', authLimiter, async (req, res) => {
+  try {
+    const { hardware_id } = req.body;
+
+    if (!hardware_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'مطلوب معرف الجهاز'
+      });
+    }
+
+    console.log(`🔍 جاري البحث عن اشتراك لمعرف الجهاز: ${hardware_id}`);
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscriptions?hardware_id=eq.${encodeURIComponent(hardware_id)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const subscription = response.data[0];
+      console.log(`✅ وجد اشتراك لمعرف الجهاز ${hardware_id}`);
+      return res.status(200).json(subscription);
+    }
+
+    console.log(`ℹ️ لا توجد بيانات اشتراك لمعرف الجهاز ${hardware_id}`);
+    return res.status(404).json({
+      success: false,
+      message: 'لا توجد بيانات اشتراك لمعرف الجهاز المحدد'
+    });
+  } catch (error) {
+    console.error('❌ خطأ في جلب الاشتراك بمعرف الجهاز:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في جلب الاشتراك'
     });
   }
 });
