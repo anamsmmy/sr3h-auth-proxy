@@ -694,11 +694,15 @@ namespace MacroApp.Services
                     };
                 }
 
+                // إذا كانت التجربة موجودة وسارية، نستدعي UpdateTrialSubscriptionAsync بدلاً من InsertTrialSubscriptionAsync
+                var existingSubscription = result["existing_subscription"]?.ToObject<bool>() ?? false;
+                var statusMessage = existingSubscription ? "trial_exists_not_expired" : "trial_eligible";
+                
                 System.Diagnostics.Debug.WriteLine("✓ الجهاز مؤهل للحصول على تجربة مجانية جديدة");
                 return new MacroFortActivationResult
                 {
                     IsSuccess = true,
-                    Message = "trial_eligible"
+                    Message = statusMessage
                 };
             }
             catch (Exception ex)
@@ -729,20 +733,23 @@ namespace MacroApp.Services
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
                     System.Diagnostics.Debug.WriteLine($"🔗 استدعاء Railway Proxy: /verify (فحص الأهلية)");
+                    System.Diagnostics.Debug.WriteLine($"   Payload: email={email}, hardware_id={hardwareId}");
                     var response = await client.PostAsync(url, content);
+
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"📨 Response Status: {response.StatusCode}");
+                    System.Diagnostics.Debug.WriteLine($"📨 Response Body: {responseContent}");
 
                     if (response.IsSuccessStatusCode)
                     {
-                        var responseContent = await response.Content.ReadAsStringAsync();
                         var result = JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>(responseContent);
                         var success = result?["success"]?.ToObject<bool>() ?? false;
-                        System.Diagnostics.Debug.WriteLine($"✓ Response: success={success}");
+                        System.Diagnostics.Debug.WriteLine($"✓ Response Parsed: success={success}");
                         return result;
                     }
                     else
                     {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        System.Diagnostics.Debug.WriteLine($"⚠️ لم يتم العثور على اشتراك: {response.StatusCode}");
+                        System.Diagnostics.Debug.WriteLine($"❌ خطأ HTTP: {response.StatusCode}");
                         return JsonConvert.DeserializeObject<Newtonsoft.Json.Linq.JObject>("{\"success\":false}");
                     }
                 }
@@ -750,6 +757,7 @@ namespace MacroApp.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"✗ خطأ في فحص الأهلية: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"✗ Stack Trace: {ex.StackTrace}");
                 return null;
             }
         }
