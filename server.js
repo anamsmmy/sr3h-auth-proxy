@@ -800,7 +800,6 @@ app.post('/get-subscription-code', authLimiter, async (req, res) => {
       const codeRecord = response.data[0];
       console.log(`✅ جلب تفاصيل الكود: ${code}`);
       return res.json({
-        success: true,
         code: codeRecord.code,
         status: codeRecord.status,
         email: codeRecord.email,
@@ -853,7 +852,6 @@ app.post('/get-subscription-by-code', authLimiter, async (req, res) => {
       const codeRecord = response.data[0];
       console.log(`✅ جلب تفاصيل الكود: ${codeValue}`);
       return res.json({
-        success: true,
         code: codeRecord.code,
         status: codeRecord.status,
         email: codeRecord.email,
