@@ -80,6 +80,8 @@ app.get('/', (req, res) => {
       '/activate': 'POST - تفعيل / ربط جهاز',
       '/validate-code': 'POST - التحقق من كود الاشتراك',
       '/redeem-code': 'POST - استهلاك كود الاشتراك',
+      '/get-subscription-code': 'POST - جلب تفاصيل كود الاشتراك',
+      '/get-subscription-by-code': 'POST - جلب تفاصيل الكود (صيغة بديلة)',
       '/generate-otp': 'POST - توليد رمز البريد',
       '/verify-otp': 'POST - التحقق من رمز البريد',
       '/save-otp': 'POST - حفظ رمز OTP مع معرف الجهاز',
@@ -767,6 +769,111 @@ app.post('/complete-device-transfer', async (req, res) => {
     res.status(error.response?.status || 500).json({
       success: false,
       message: 'خطأ في إكمال نقل الجهاز'
+    });
+  }
+});
+
+// POST /get-subscription-code - جلب تفاصيل الكود (يستخدم من العميل)
+app.post('/get-subscription-code', authLimiter, async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    if (!code) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code'
+      });
+    }
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(code)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const codeRecord = response.data[0];
+      console.log(`✅ جلب تفاصيل الكود: ${code}`);
+      return res.json({
+        success: true,
+        code: codeRecord.code,
+        status: codeRecord.status,
+        email: codeRecord.email,
+        hardware_id: codeRecord.hardware_id,
+        subscription_type: codeRecord.subscription_type,
+        expiry_date: codeRecord.expiry_date,
+        used_date: codeRecord.used_date,
+        duration_days: codeRecord.duration_days
+      });
+    }
+
+    return res.status(404).json({
+      success: false,
+      message: 'الكود غير موجود'
+    });
+  } catch (error) {
+    console.error('❌ Get subscription code error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في جلب تفاصيل الكود'
+    });
+  }
+});
+
+// POST /get-subscription-by-code - نفس الـ endpoint بصيغة بديلة
+app.post('/get-subscription-by-code', authLimiter, async (req, res) => {
+  try {
+    const { subscription_code, code } = req.body;
+    const codeValue = code || subscription_code;
+
+    if (!codeValue) {
+      return res.status(400).json({
+        success: false,
+        message: 'مفقود: code أو subscription_code'
+      });
+    }
+
+    const response = await axios.get(
+      `${SUPABASE_URL}/rest/v1/macro_fort_subscription_codes?code=eq.${encodeURIComponent(codeValue)}&select=*`,
+      {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (response.data && response.data.length > 0) {
+      const codeRecord = response.data[0];
+      console.log(`✅ جلب تفاصيل الكود: ${codeValue}`);
+      return res.json({
+        success: true,
+        code: codeRecord.code,
+        status: codeRecord.status,
+        email: codeRecord.email,
+        hardware_id: codeRecord.hardware_id,
+        subscription_type: codeRecord.subscription_type,
+        expiry_date: codeRecord.expiry_date,
+        used_date: codeRecord.used_date,
+        duration_days: codeRecord.duration_days
+      });
+    }
+
+    return res.status(404).json({
+      success: false,
+      message: 'الكود غير موجود'
+    });
+  } catch (error) {
+    console.error('❌ Get subscription by code error:', error.message);
+    res.status(error.response?.status || 500).json({
+      success: false,
+      message: 'خطأ في جلب تفاصيل الكود'
     });
   }
 });
