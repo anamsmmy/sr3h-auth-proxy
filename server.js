@@ -25,16 +25,20 @@ app.use(
   })
 );
 
-// Rate Limiting عام – 30 طلب / 15 دقيقة
+// Rate Limiting ذكي بناءً على hardware_id – 20 طلب / 15 دقيقة لكل جهاز
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 30,
+  max: 20,
   message: 'عدد الطلبات كثير جداً، جرب لاحقاً',
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    const hardwareId = req.body?.hardware_id;
+    return hardwareId || req.ip;
+  }
 });
 
-// Rate Limiting مشدد – 20 طلبات / 15 دقيقة
+// Rate Limiting ذكي للتحقق – 20 طلب / 15 دقيقة لكل جهاز
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 20,
@@ -47,7 +51,11 @@ const authLimiter = rateLimit({
     });
   },
   standardHeaders: false,
-  legacyHeaders: false
+  legacyHeaders: false,
+  keyGenerator: (req, res) => {
+    const hardwareId = req.body?.hardware_id;
+    return hardwareId || req.ip;
+  }
 });
 
 // تطبيق الـ limiter العام
@@ -800,6 +808,7 @@ app.post('/get-subscription-code', authLimiter, async (req, res) => {
       const codeRecord = response.data[0];
       console.log(`✅ جلب تفاصيل الكود: ${code}`);
       return res.json({
+        id: codeRecord.id,
         code: codeRecord.code,
         status: codeRecord.status,
         email: codeRecord.email,
@@ -807,7 +816,9 @@ app.post('/get-subscription-code', authLimiter, async (req, res) => {
         subscription_type: codeRecord.subscription_type,
         expiry_date: codeRecord.expiry_date,
         used_date: codeRecord.used_date,
-        duration_days: codeRecord.duration_days
+        duration_days: codeRecord.duration_days,
+        created_at: codeRecord.created_at,
+        updated_at: codeRecord.updated_at
       });
     }
 
@@ -852,6 +863,7 @@ app.post('/get-subscription-by-code', authLimiter, async (req, res) => {
       const codeRecord = response.data[0];
       console.log(`✅ جلب تفاصيل الكود: ${codeValue}`);
       return res.json({
+        id: codeRecord.id,
         code: codeRecord.code,
         status: codeRecord.status,
         email: codeRecord.email,
@@ -859,7 +871,9 @@ app.post('/get-subscription-by-code', authLimiter, async (req, res) => {
         subscription_type: codeRecord.subscription_type,
         expiry_date: codeRecord.expiry_date,
         used_date: codeRecord.used_date,
-        duration_days: codeRecord.duration_days
+        duration_days: codeRecord.duration_days,
+        created_at: codeRecord.created_at,
+        updated_at: codeRecord.updated_at
       });
     }
 
